@@ -6,8 +6,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-
-
 '''Web Scraping using Selenium python we will use Google Chrome web browser for scraping the text from the website'''
 
 # creating a class to scrape
@@ -89,7 +87,7 @@ class GetDataFrame(WebScraping):
 # in the form of dataframe
 class ReadData:
 
-    def __init__(self,file):
+    def __init__(self,file=None):
         
         # declearing a variable to read the dataframe
         self.df = pd.read_csv(file,encoding='utf-8')
@@ -100,7 +98,7 @@ class ReadData:
     
     # creating a function to filter the dataframe
     # based on some condition
-    def get_data(self,feature_name,str_lst,endswith_condition):
+    def get_data(self,feature_name=None,str_lst=None,endswith_condition=None):
 
         try:
             filtered_df = self.df[self.df[feature_name].str.contains("|".join(str_lst))]
@@ -113,7 +111,7 @@ class ReadData:
         
     # function to read the data
     # from the feature
-    def readdata(self,feature_name,str_lst,condition):
+    def readdata(self,feature_name=None,str_lst=None,condition=None):
 
         try:
             filtered_df = self.get_data(feature_name,str_lst,condition)
@@ -126,7 +124,7 @@ class ReadData:
 # from the stored links
 class ExtractText:
 
-    def __init__(self,link):
+    def __init__(self,link=None):
         
         # declearing the driver variable
         self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager("131.0.6778.205").install()))
@@ -137,7 +135,7 @@ class ExtractText:
         self.driver.quit()
     
     # extracting the news title
-    def news_title(self,title_val,tag_value):
+    def news_title(self,title_val=None,tag_value=None):
 
         try:
             news_title = self.driver.find_elements(By.CLASS_NAME,value=title_val)
@@ -147,7 +145,7 @@ class ExtractText:
     
     # extracting news date and time
     # with the main content
-    def get_text(self,value,value2,value3,value4):
+    def get_text(self,value=None,value2=None,value3=None,value4=None):
 
         try:
             search = self.driver.find_elements(By.CLASS_NAME,value=value)
@@ -163,11 +161,11 @@ class ExtractText:
 # the extraction of the hyper links
 class GetLinks:
 
-    def __init__(self,csv_file_name):
+    def __init__(self,csv_file_name=None):
 
         self.r = ReadData(file=csv_file_name)
         
-    def get_links(self,featurename,str_lst,endcondition):
+    def get_links(self,featurename=None,str_lst=None,endcondition=None):
         try:
             self.data = self.r.readdata(featurename,str_lst,endcondition)
             return self.data
@@ -182,7 +180,7 @@ class GetLinks:
 # document in MongoDB Database
 class CreateDocuments:
 
-    def __init__(self,file_name,feature,val_lst,end_con):
+    def __init__(self,file_name=None,feature=None,val_lst=None,end_con=None):
         
         # declearing a variable to read the links
         self.gl = GetLinks(csv_file_name=file_name)
@@ -196,7 +194,7 @@ class CreateDocuments:
 
     # function for creating a list of dictionaries
     # which will be inserted later as a document in the mongodb'c collection
-    def get_documents(self,start,end,title_val,tag_val,val4,val,val2,val3):
+    def get_documents(self,start=None,end=None,title_val=None,tag_val=None,val4=None,val=None,val2=None,val3=None):
         
         try:
             

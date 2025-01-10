@@ -1,3 +1,4 @@
+import pandas as pd
 from pymongo import MongoClient
 
 # MongoDB Integration
@@ -9,7 +10,8 @@ class MongoDBManager:
         self.client = MongoClient("mongodb://localhost:27017/")  # connection string
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
-
+    
+    # creating a function to close the connection
     def close_conn(self):
 
         try:
@@ -17,7 +19,8 @@ class MongoDBManager:
             return self.client.close()
         except Exception as e:
             return e
-
+    
+    # creating a function for checking connection 
     def check_mongo_connection(self):
 
         try:
@@ -27,7 +30,8 @@ class MongoDBManager:
             print("Available Databases:", databases)
         except Exception as e:
             print("Error connecting to MongoDB:", e)
-
+    
+    # function for getting the length of the collection
     def check_collection_length(self):
 
         try:
@@ -37,6 +41,7 @@ class MongoDBManager:
         except Exception as e:
             print("Error!!! : ",e)
 
+    # function for inserting data in the collection
     def insert_data_in_collection(self, data=None):
         try:
             if not data:
@@ -54,11 +59,18 @@ class MongoDBManager:
         except Exception as e:
             print(f"Error while inserting data: {e}")
 
+    # function for reading collection data as dataframe
+    def read_collection_as_df(self):
+
+        try:
+            # Fetch all documents from the collection
+            documents = list(self.collection.find())
+            # Convert to DataFrame
+            df = pd.DataFrame(documents)
+            return df
+        except Exception as e:
+            return e
+
 if __name__ == '__main__':
 
-
-    m = MongoDBManager(db_name='Vibhor',collection_name='moneycontrol_news')
-    m.check_mongo_connection()
-    total_length = m.check_collection_length()
-    m.close_conn()
-    print('total_length: ',total_length)
+    pass

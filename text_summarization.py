@@ -11,7 +11,7 @@ import warnings
 from pymongo_conn import MongoDBManager
 warnings.filterwarnings('ignore')
 # Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = 'xxxxxxxxxxx'
+api_key = os.environ['GOOGLE_API_KEY'] = 'xxxxxx-xxxxx'
 
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
@@ -56,7 +56,7 @@ class ChatGoogleGENAI:
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
         self.model = ChatGoogleGenerativeAI(
-            model="gemini-pro",  # Using the 'gemini-pro' model
+            model="gemini-1.5-flash",  # Using the 'gemini-pro' model
             temperature=0.3,  # Setting temperature for generation
             google_api_key=api_key, # Passing the Google API key
             top_p=1.0,
@@ -148,8 +148,11 @@ class DocumentSummarization(ChatGoogleGENAI):
             return response
         except Exception as e:
             return e
-        
 
+      
+# class for storing
+# the summarized text
+# into the database
 class InsertSummariesIntoDatabase:
 
     def __init__(self,database=None,collection=None,featurename=None,slicer=None):

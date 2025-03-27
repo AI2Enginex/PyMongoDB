@@ -4,27 +4,14 @@ import scraping_data as nts
 from text_summarization import InsertSummariesIntoDatabase
 
 # Creating a driver class to handle the execuetion of the code
-# this class execuets the process of scraping and storing the data
+# this class execuets the process of scraping and storing the 
+# news data such as title, date and time and the news
 class DriverClass:
 
-    def __init__(self, link=None, filename=None):
+    def __init__(self, filename=None):
 
-        self.links = link
         self.filename = filename
-    
-    # scraping the links
-    def scrapelinks(self, v2=None, v3=None, ref=None):
 
-        try:
-
-            news_link = nts.GetDataFrame(
-                link=self.links, val2=v2, val3=v3, ref=ref)
-            news_link.createfile(filename=self.filename)
-            news_link.releasedriver()
-
-        except Exception as e:
-                return e
-    
     # inserting the scraped data into MongoDB's collection
     def insert_to_db(self, feature_name=None, valst=None, start=None, end=None, val=None, val2=None, val3=None, val4=None, titleval=None, tagval=None, endcon=None):
 
@@ -37,8 +24,6 @@ class DriverClass:
            
         except Exception as e:
                 return e
-
-
 
 if __name__ == '__main__':
 
@@ -55,11 +40,8 @@ if __name__ == '__main__':
             print(f'Start at {start} and end till {end}')
 
             scr_news = DriverClass(
-                link="https://www.moneycontrol.com/news/business/stocks/",
-                filename='20_sep_links.csv'
+                filename='links.csv'
             )
-
-            scr_news.scrapelinks(v2='fleft', v3='a', ref='href')
 
             coll = scr_news.insert_to_db(
                 feature_name='Links',

@@ -10,11 +10,11 @@ from langchain.prompts import PromptTemplate  # Importing PromptTemplate class f
 import warnings
 from pymongo_conn import MongoDBManager
 warnings.filterwarnings('ignore')
-# Setting the API key for Google Generative AI service by assigning it to the environment variable 'GOOGLE_API_KEY'
-api_key = os.environ['GOOGLE_API_KEY'] = 'xxxxxx-xxxxx'
-
+api_key =  "---------"
+os.environ['GOOGLE_API_KEY'] = api_key
 # Configuring Google Generative AI module with the provided API key
 genai.configure(api_key=api_key)
+key = os.environ.get('GOOGLE_API_KEY')
 
 
 
@@ -34,7 +34,7 @@ class ReadData:
         try:
             return self.m.read_collection_as_df()
         except Exception as e:
-            return e
+            raise e
     
     # filtering the dataframe to get the summaries
     def filter_data_as_str(self,news_text_featurename=None,slicer=None):
@@ -46,7 +46,7 @@ class ReadData:
             else:
                 return df[news_text_featurename].to_list()[slicer:]
         except Exception as e:
-            return e
+            raise e
             
 
 # declaring a class 
@@ -56,9 +56,9 @@ class ChatGoogleGENAI:
         
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
         self.model = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",  # Using the 'gemini-pro' model
+            model="gemini-2.5-flash",  # Using the 'gemini-pro' model
             temperature=0.3,  # Setting temperature for generation
-            google_api_key=api_key, # Passing the Google API key
+            google_api_key=key, # Passing the Google API key
             top_p=1.0,
             top_k=32,
             candidate_count=1,
@@ -69,7 +69,7 @@ class ChatGoogleGENAI:
 class EmbeddingModel:
     def __init__(self, model_name):
         # Initializing GoogleGenerativeAIEmbeddings object with the specified model name
-        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name)
+        self.embeddings = GoogleGenerativeAIEmbeddings(model=model_name, google_api_key=key)
         
 class TextChunks:
     @classmethod
@@ -79,17 +79,17 @@ class TextChunks:
             text_splitter = RecursiveCharacterTextSplitter(separators=separator, chunk_size=chunksize, chunk_overlap=overlap)
             return text_splitter.split_text(text)
         except Exception as e:
-            return e
+            raise e
         
 class Vectors:
     @classmethod
     def generate_vectors(cls, chunks, model):
         try:
             # Generating vectors from text chunks using specified model
-            embeddings = EmbeddingModel(model_name=model)
-            return FAISS.from_texts(chunks, embedding=embeddings.embeddings)
+            embeddings = EmbeddingModel(model_name=model).embeddings
+            return FAISS.from_texts(chunks, embedding=embeddings)
         except Exception as e:
-            return e
+            raise e
 
 class DocumentSummarization(ChatGoogleGENAI):
     def __init__(self,text):
@@ -102,14 +102,14 @@ class DocumentSummarization(ChatGoogleGENAI):
             # Getting text chunks from the file using TextChunks class
             return TextChunks().get_text_chunks(separator=separator, chunksize=chunksize, overlap=overlap, text=self.file)
         except Exception as e:
-            return e
+            raise e
         
     def embeddings(self, separator=None, chunksize=None, overlap=None, model=None):
         try:
             # Generating vectors from text chunks using Vectors class
             return Vectors().generate_vectors(chunks=self.get_chunks(separator, chunksize, overlap), model=model)
         except Exception as e:
-            return e
+            raise e
     
     def summarisation_chains(self, chaintype):
         try:
@@ -119,6 +119,7 @@ class DocumentSummarization(ChatGoogleGENAI):
             prompt_template = """
             You are given a text that contains daily stock news for indian stock market. 
             Your job is generate a consice summary of the given text.
+            Generate Summary in 2-3 sentence only.
             You have to make sure no information is missed.
             Context:\n {context}?\n
             Question: \n{question}\n
@@ -130,7 +131,7 @@ class DocumentSummarization(ChatGoogleGENAI):
             # Loading the question-answering chain with the specified chain type and prompt
             return load_qa_chain(self.model, chain_type=chaintype, prompt=prompt)
         except Exception as e:
-            return e
+            raise e
     
     def main(self, separator=None, chunksize=None, overlap=None, model=None, type=None, user_question=None):
         try:
@@ -147,7 +148,7 @@ class DocumentSummarization(ChatGoogleGENAI):
             )
             return response
         except Exception as e:
-            return e
+            raise e
 
       
 # class for storing
@@ -165,7 +166,7 @@ class InsertSummariesIntoDatabase:
         try:
             return [{'summary': text} for text in data]
         except Exception as e:
-            return e
+            raise e
 
     def get_summaries(self,chunk=None,overlap=None,model_name=None,chain=None,query=None):
 
@@ -189,7 +190,7 @@ class InsertSummariesIntoDatabase:
             result_data = self.create_list_of_dictionaries(data=summaries)
             return result_data
         except Exception as e:
-            return e
+            raise e
 
         
 if __name__ == '__main__':

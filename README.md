@@ -49,15 +49,16 @@ In this project, we are developing a Python-based web scraper that extracts stoc
 
   Summarizing news using AI: The extracted news content is sent to the Google Gemini API for automatic summarization.
 
-          # class for summarizing
-          # the news text
-          class DocumentSummarization(ChatGoogleGENAI):
-          def __init__(self,text):
-              super().__init__()  # Calling the constructor of the superclass (ChatGoogleGENAI)
-              # Reading text from the specified directory and assigning it to self.file
-              self.file = text
+          class GenerateTextSummaries:
+          def __init__(self, database: str, collection: str, filter_col: str, featurename: str, val: str):
+              r = ReadData(db=database, collectionname=collection)
+              self.news_text = r.filter_data_as_str(
+                  filter=filter_col,
+                  featurename=featurename,
+                  value=val
+              )
 
-  Storing data in MongoDB: Both the original news content and its summarized version are saved in a MongoDB collection.
+  Storing data in MongoDB: original news content are saved in a MongoDB collection.
 
          # MongoDB Integration for storing original news text
          class MongoDBManager:
@@ -68,16 +69,6 @@ In this project, we are developing a Python-based web scraper that extracts stoc
                 self.client = MongoClient("mongodb://localhost:27017/")  # connection string
                 self.db = self.client[db_name]
                 self.collection = self.db[collection_name]
-
-          # class for storing
-          # the summarized text
-          # into the database
-          class InsertSummariesIntoDatabase:
-
-              def __init__(self,database=None,collection=None,featurename=None,slicer=None):
-          
-                  r = ReadData(db=database,collectionname=collection)
-                  self.news_text = r.filter_data_as_str(news_text_featurename=featurename,slicer=slicer)
 
 ## Features Explanation
 
@@ -103,7 +94,7 @@ In this project, we are developing a Python-based web scraper that extracts stoc
   
   4. Data Storage in MongoDB
      
-    The extracted news content and summaries are stored in a MongoDB database.
+    The extracted news content and are stored in a MongoDB database.
 
 ***This allows easy retrieval and further analysis of the data.***
 

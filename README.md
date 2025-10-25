@@ -47,7 +47,7 @@ In this project, we are developing a Python-based web scraper that extracts stoc
             self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager("134.0.6998.178").install()))
             self.driver.get(link)
 
-  Summarizing news using AI: The extracted news content is sent to the Google Gemini API for automatic summarization.
+  Summarizing news using AI: The extracted news content is filterd with a particular value and sent to the Google Gemini API for automatic summarization.
 
           class GenerateTextSummaries:
           def __init__(self, database: str, collection: str, filter_col: str, featurename: str, val: str):

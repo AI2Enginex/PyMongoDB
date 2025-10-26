@@ -18,12 +18,13 @@ key = os.environ.get('GOOGLE_API_KEY')
 
 
 
+
 # class for reading the data
 # from the MongoDB Database
 class ReadData:
     
     # class constructor
-    def __init__(self,db: str, collectionname: str):
+    def __init__(self,db=None, collectionname=None):
 
         self.m = MongoDBManager(db_name=db,collection_name=collectionname)
     
@@ -36,19 +37,51 @@ class ReadData:
         except Exception as e:
             raise e
     
-    # filtering the dataframe to get the summaries
-    def filter_data_as_str(self,filter: str, featurename: str, value: str):
-
+    
+    def filter_data_as_str(self,news_text_featurename: str,date_time_featurename: str,filterdate: str = None,filtertime: str = None):
+        """
+        Reads data from MongoDB as a DataFrame, splits date/time into separate columns,
+        optionally filters by date or time, and returns a list of dictionaries
+        containing text, date, and time.
+        """
         try:
+            # Read data
             df = self.read_df()
-            df = df[df[filter].str.contains(value, case=False, regex=False)]
-            if len(df.index) > 0:
-                return df[featurename].to_list()
-            else:
-                return None
+
+            # Drop _id column if present
+            if '_id' in df.columns:
+                df = df.drop(['_id'], axis=1)
+
+            # Drop duplicate rows
+            df = df.drop_duplicates(keep='last')
+
+            # Split date_time into date and time
+            df[['date', 'time']] = df[date_time_featurename].str.split('/', n=1, expand=True)
+
+            # Clean up extra spaces and normalize case
+            df['date'] = df['date'].str.strip().str.lower()
+            df['time'] = df['time'].str.strip().str.lower()
+
+            # Drop the original date_time column
+            df.drop(columns=[date_time_featurename], inplace=True)
+
+            # Apply filters if provided
+            if filterdate is not None:
+                df = df[df['date'].str.contains(filterdate.strip().lower(), na=False)]
+            if filtertime is not None:
+                df = df[df['time'].str.contains(filtertime.strip().lower(), na=False)]
+
+            # Remove rows with empty text
+            df = df[df[news_text_featurename].str.strip() != '']
+
+            # Convert to list of dicts
+            data = df[[news_text_featurename, 'date', 'time']].to_dict(orient='records')
+
+            print(f"Filtered records: {len(data)}")
+            return data
+
         except Exception as e:
             raise e
-
 
 # declaring a class 
 # for google-generative AI API
@@ -58,7 +91,7 @@ class ChatGoogleGENAI:
         # Initializing the ChatGoogleGenerativeAI object with specified parameters
         self.model = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",  # Using the 'gemini-pro' model
-            temperature=0.3,  # Setting temperature for generation
+            temperature=0,  # Setting temperature for generation
             google_api_key=key, # Passing the Google API key
             top_p=1.0,
             top_k=32,
@@ -74,7 +107,7 @@ class EmbeddingModel:
         
 class TextChunks:
     @classmethod
-    def get_text_chunks(cls, separator: None, chunksize: str, overlap: str, text: str):
+    def get_text_chunks(cls, separator=None, chunksize=None, overlap=None, text=None):
         try:
             # Splitting text into chunks based on specified parameters
             text_splitter = RecursiveCharacterTextSplitter(separators=separator, chunk_size=chunksize, chunk_overlap=overlap)
@@ -92,176 +125,119 @@ class Vectors:
         except Exception as e:
             raise e
 
-# =================== GEMINI PARAMETERS CONFIG CLASS ===================
-
-class GeminiParameters:
-    """
-    Holds all configuration parameters related to Gemini summarization and embeddings.
-    """
-    def __init__(
-        self,
-        separator: str = None,
-        chunk_size: int = 3000,
-        overlap: int = 100,
-        model_name: str = "models/gemini-embedding-001",
-        chain_type: str = "stuff",
-        query: str = "Summarize the following text"
-    ):
-        self.separator = separator
-        self.chunk_size = chunk_size
-        self.overlap = overlap
-        self.model_name = model_name
-        self.chain_type = chain_type
-        self.query = query
-
-
-# =================== MAIN SUMMARIZATION CLASS ===================
-
 class DocumentSummarization(ChatGoogleGENAI):
-    def __init__(self, text: str, gemini_params: GeminiParameters):
-        """
-        text: input text to summarize
-        gemini_params: instance of GeminiParameters with all configuration
-        """
-        super().__init__()
+    def __init__(self,text: str):
+        super().__init__()  # Calling the constructor of the superclass (ChatGoogleGENAI)
+        # Reading text from the specified directory and assigning it to self.file
         self.file = text
-        self.params = gemini_params
+        
 
-    def get_chunks(self):
+    def get_chunks(self, separator=None, chunksize=None, overlap=None):
         try:
-            # Getting text chunks using parameters from GeminiParameters
-            return TextChunks().get_text_chunks(
-                separator=self.params.separator,
-                chunksize=self.params.chunk_size,
-                overlap=self.params.overlap,
-                text=self.file
-            )
+            # Getting text chunks from the file using TextChunks class
+            return TextChunks().get_text_chunks(separator=separator, chunksize=chunksize, overlap=overlap, text=self.file)
         except Exception as e:
             raise e
         
-    def embeddings(self):
+    def embeddings(self, separator=None, chunksize=None, overlap=None, model=None):
         try:
-            # Generating vectors from text chunks using the Gemini embedding model
-            return Vectors().generate_vectors(
-                chunks=self.get_chunks(),
-                model=self.params.model_name
-            )
+            # Generating vectors from text chunks using Vectors class
+            return Vectors().generate_vectors(chunks=self.get_chunks(separator, chunksize, overlap), model=model)
         except Exception as e:
             raise e
     
-    def summarisation_chains(self):
+    def summarisation_chains(self, chaintype: str):
         try:
-            # Defining the prompt template for summarization
+            # Defining a prompt template for summarization
+            # the "context" variable provides the background or content from which the summary is derived
+            # the "question" variable prompts the user to focus on specific aspects or details within that context
             prompt_template = """
-            You are given a text that contains daily stock news for the Indian stock market.
-            Your job is to generate a concise summary of the given text.
-            Generate Summary in 1-2 sentences only.
+            You are given a text that contains daily stock news for indian stock market. 
+            Your job is generate a consice summary of the given text.
+            Generate Summary in 1-3 sentence only.
             You have to make sure no information is missed.
-
             Context:\n {context}?\n
             Question: \n{question}\n
-
+        
             Answer:
             """
-
             # Creating a PromptTemplate object with the defined template
-            prompt = PromptTemplate(
-                template=prompt_template,
-                input_variables=["context", "question"]
-            )
-
+            prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
             # Loading the question-answering chain with the specified chain type and prompt
-            return load_qa_chain(
-                self.model,
-                chain_type=self.params.chain_type,
-                prompt=prompt
-            )
+            return load_qa_chain(self.model, chain_type=chaintype, prompt=prompt)
         except Exception as e:
             raise e
     
-    def main(self):
+    def main(self, separator=None, chunksize=None, overlap=None, model=None, type=None, user_question=None):
         try:
-            # Retrieve summarization chain
-            chain = self.summarisation_chains()
-
-            # Generate embeddings
-            db = self.embeddings()
-
-            # Perform similarity search
-            docs = db.similarity_search(self.params.query)
-
-            # Generate the final summarized response
+            # Retrieving the summarization chain
+            chain = self.summarisation_chains(chaintype=type)
+            # Generating embeddings for the text
+            db = self.embeddings(separator, chunksize, overlap, model)
+            # Performing similarity search and obtaining documents
+            docs = db.similarity_search(user_question)
+            # Generating response using the chain and user question
             response = chain(
-                {"input_documents": docs, "question": self.params.query},
+                {"input_documents": docs, "question": user_question},
                 return_only_outputs=True
             )
             return response
         except Exception as e:
             raise e
 
-
-# =================== BULK SUMMARIZATION CLASS ===================
-
+      
+# class for storing
+# the summarized text
+# into the database
 class GenerateTextSummaries:
-    def __init__(self, database: str, collection: str, filter_col: str, featurename: str, val: str):
+
+    def __init__(self, database=None, collection=None, featurename=None, date_time_featurename=None, date_filter=None, time_filter=None):
+
+
         r = ReadData(db=database, collectionname=collection)
-        self.news_text = r.filter_data_as_str(
-            filter=filter_col,
-            featurename=featurename,
-            value=val
+        self.news_data = r.filter_data_as_str(
+            news_text_featurename=featurename,
+            date_time_featurename=date_time_featurename,
+            filterdate=date_filter,
+            filtertime=time_filter
         )
-    
-    def clean_data(self):
-        try:
-            return [data for data in self.news_text if len(data.strip()) > 1]
-        except Exception as e:
-            raise e
 
-    def create_list_of_summaries(self, data: list):
-        try:
-            return [text for text in data]
-        except Exception as e:
-            raise e
+        self.feature = featurename
+        self.date_time = date_time_featurename
 
-    def get_summaries(self, gemini_params: GeminiParameters):
+    def get_summaries(self, chunk=None, overlap=None, model_name=None, chain=None, query=None):
         try:
             summaries = []
-            for data in self.clean_data():
-                re = DocumentSummarization(text=data, gemini_params=gemini_params)
-                result = re.main()
-                summaries.append(result['output_text'])
+            for item in self.news_data:
+                text = item[self.feature]
+                summarizer = DocumentSummarization(text=text)
+                result = summarizer.main(
+                    chunksize=chunk,
+                    overlap=overlap,
+                    model=model_name,
+                    type=chain,
+                    user_question=query
+                )
 
-            return self.create_list_of_summaries(data=summaries)
+                summaries.append({
+                    'summary': result['output_text']
+                })
+            return summaries
         except Exception as e:
             raise e
 
-
-# =================== MAIN EXECUTION ===================
-
+        
 if __name__ == '__main__':
-    #  Create Gemini parameter configuration
-    gemini_params = GeminiParameters(
-        separator=None,
-        chunk_size=3000,
-        overlap=100,
-        model_name="models/gemini-embedding-001",
-        chain_type="stuff",
-        query="summarize the following text"
-    )
 
-    # Initialize DB summary generator
-    text_summaries = GenerateTextSummaries(
+    summaries = GenerateTextSummaries(
         database='Vibhor',
         collection='moneycontrol_news',
-        filter_col='date_time',
-        featurename='text',
-        val='october 25'
-    )
-    
-    # Generate summaries using the Gemini config
-    summaries = text_summaries.get_summaries(gemini_params=gemini_params)
+        featurename='text', date_time_featurename='date_time',
+        date_filter='october 21',
+        time_filter=None
 
-    #Print all summaries
+    )
+    result_data = summaries.get_summaries(chunk=1000,overlap=300,model_name='models/gemini-embedding-001',chain='stuff',query='give summary of the following')
     print("\n=== GENERATED SUMMARIES ===")
-    for idx, summary in enumerate(summaries, start=1):
+    for idx, summary in enumerate(result_data, start=1):
         print(f"{idx}. {summary}\n")

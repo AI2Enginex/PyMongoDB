@@ -61,7 +61,11 @@ class ReadData:
             # Clean up extra spaces and normalize case
             df['date'] = df['date'].str.strip().str.lower()
             df['time'] = df['time'].str.strip().str.lower()
-
+            df[news_text_featurename] = df[news_text_featurename].apply(lambda x: cleantext.clean(
+                                                    x,
+                                                    lowercase=True,
+                                                    extra_spaces=True,
+                                                ))
             # Drop the original date_time column
             df.drop(columns=[date_time_featurename], inplace=True)
 
@@ -241,3 +245,4 @@ if __name__ == '__main__':
     print("\n=== GENERATED SUMMARIES ===")
     for idx, summary in enumerate(result_data, start=1):
         print(f"{idx}. {summary}\n")
+
